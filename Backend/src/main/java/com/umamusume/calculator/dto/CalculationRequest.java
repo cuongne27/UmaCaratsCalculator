@@ -15,6 +15,7 @@ public class CalculationRequest {
     private String cmRank;
     private String lohRank;
     private boolean dailyPackActive;
+    private String trainingPass; // "Free", "Bronze", "Silver", "Gold", etc.
 
     // additional inputs
     private int umaTicketsOwned;
@@ -119,5 +120,13 @@ public class CalculationRequest {
 
     public void setDailyPackActive(boolean dailyPackActive) {
         this.dailyPackActive = dailyPackActive;
+    }
+
+    public String getTrainingPass() {
+        return trainingPass;
+    }
+
+    public void setTrainingPass(String trainingPass) {
+        this.trainingPass = trainingPass;
     }
 }

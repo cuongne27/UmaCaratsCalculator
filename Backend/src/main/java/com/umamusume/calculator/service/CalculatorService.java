@@ -13,39 +13,34 @@ import java.util.List;
 @Service
 public class CalculatorService {
 
-    private final List<Banner> globalTimeline = new ArrayList<>();
+    private final BannerService bannerService;
 
-    public CalculatorService() {
-        // Khoởi tạo dữ liệu cố định từ lộ trình file Timeline Global tương lai
-        globalTimeline
-                .add(new Banner("b1", "Support: Throne Group Card (Ngọc Tọa)", "Support", LocalDate.of(2026, 7, 15)));
-        globalTimeline.add(new Banner("b2", "Uma: Kitasan Black (Anime Alt Ver)", "Uma", LocalDate.of(2026, 8, 24)));
-        globalTimeline.add(new Banner("b3", "Support: Super Creek (Alt Ver)", "Support", LocalDate.of(2026, 10, 10)));
-        globalTimeline.add(new Banner("b4", "Uma: Neo Universe (2nd Anniversary)", "Uma", LocalDate.of(2026, 12, 25)));
+    public CalculatorService(BannerService bannerService) {
+        this.bannerService = bannerService;
     }
 
     public List<Banner> getTimeline() {
-        return globalTimeline;
+        return bannerService.getAllBanners();
     }
 
     public CalculationResult calculate(CalculationRequest request) {
-        Banner target = globalTimeline.stream()
-                .filter(b -> b.getId().equals(request.getTargetBannerId()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Banner khong hop le"));
+        Banner target = bannerService.getBannerById(request.getTargetBannerId());
+        if (target == null) {
+            throw new IllegalArgumentException("Banner not found");
+        }
 
         LocalDate start = request.getStartDate();
         LocalDate end = target.getGlobalReleaseDate();
 
         if (start.isAfter(end)) {
-            return new CalculationResult(0, 0, request.getCurrentCarats(), 0);
+            return new CalculationResult(0, 0, request.getCurrentCarats(), 0, 0, 0, 0, 0, request.getUmaTicketsOwned(), request.getSupportTicketsOwned());
         }
 
         long days = ChronoUnit.DAYS.between(start, end);
         int weeks = (int) (days / 7);
         int months = (int) (days / 30);
 
-        // Henry tables (hardcoded)
+        // Henry tables (hardcoded from Henry's calculator)
         java.util.Map<String, Integer> teamTrialsWeekly = new java.util.HashMap<>();
         teamTrialsWeekly.put("Class 6", 375);
         teamTrialsWeekly.put("Class 5.5", 262);
@@ -92,9 +87,8 @@ public class CalculatorService {
         loh.put("Bronze 3", new int[]{60, 0});
         loh.put("Bronze 2", new int[]{30, 0});
 
-        // Daily / base incomes - keep a small baseline similar to previous implementation
-        int dailyMissionIncome = 50; // fallback daily
-
+        // Daily mission income: 75 carats/day per Henry's formula
+        int dailyMissionIncome = 75;
         int earnedDaily = (int) (days * dailyMissionIncome);
 
         // team trials weekly income based on selected class
@@ -120,15 +114,28 @@ public class CalculatorService {
         int earnedLoh = lohEvents * lohCaratPerEvent;
         int lohTickets = lohEvents * lohTicketsPerEvent;
 
-        // daily pack
-        int dailyPackBonus = request.isDailyPackActive() ? 1000 : 0;
-        int earnedPacks = months * dailyPackBonus;
+        // Daily carat pack bonus: 1000 carats/month if active
+        int dailyPackBonus = request.isDailyPackActive() ? (months * 1000) : 0;
 
-        int totalEarned = earnedDaily + earnedTrials + earnedClub + earnedCm + earnedLoh + earnedPacks + /*baseline monthly events*/ 0;
+        // Training pass bonus - adjust based on actual game values
+        // For now: Free=0, Bronze/Silver/Gold add some carat bonus per month
+        int trainingPassBonus = 0;
+        String trainingPass = request.getTrainingPass();
+        if (trainingPass != null) {
+            switch (trainingPass) {
+                case "Bronze": trainingPassBonus = months * 200; break;
+                case "Silver": trainingPassBonus = months * 400; break;
+                case "Gold": trainingPassBonus = months * 600; break;
+                case "Free":
+                default: trainingPassBonus = 0; break;
+            }
+        }
+
+        int totalEarned = earnedDaily + earnedTrials + earnedClub + earnedCm + earnedLoh + dailyPackBonus + trainingPassBonus;
 
         int finalTotal = request.getCurrentCarats() + totalEarned;
 
-        // Pull cost assumption: 300 carats per pull
+        // Pull cost: 300 carats per pull
         int PULL_COST = 300;
         int totalPulls = finalTotal / PULL_COST;
 
