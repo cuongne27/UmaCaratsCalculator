@@ -1,0 +1,6 @@
+# Ignore node modules
+Frontend/node_modules/
+
+# Optional: OS files
+.DS_Store
+Thumbs.db
