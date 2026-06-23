@@ -9,11 +9,18 @@ public class CalculationRequest {
     private LocalDate startDate;
     private String targetBannerId;
     private int currentCarats;
-    private int teamTrialsClass;
-    private int clubRankReward;
-    private int cmRankReward;
-    private int lohRankReward;
+    // use string keys so backend maps to Henry tables
+    private String teamTrialsClass;
+    private String clubRank;
+    private String cmRank;
+    private String lohRank;
     private boolean dailyPackActive;
+
+    // additional inputs
+    private int umaTicketsOwned;
+    private int supportTicketsOwned;
+    private int championEventsCount;
+    private int lohEventsCount;
 
     public CalculationRequest() {
     }
@@ -42,36 +49,68 @@ public class CalculationRequest {
         this.currentCarats = currentCarats;
     }
 
-    public int getTeamTrialsClass() {
+    public String getTeamTrialsClass() {
         return teamTrialsClass;
     }
 
-    public void setTeamTrialsClass(int teamTrialsClass) {
+    public void setTeamTrialsClass(String teamTrialsClass) {
         this.teamTrialsClass = teamTrialsClass;
     }
 
-    public int getClubRankReward() {
-        return clubRankReward;
+    public String getClubRank() {
+        return clubRank;
     }
 
-    public void setClubRankReward(int clubRankReward) {
-        this.clubRankReward = clubRankReward;
+    public void setClubRank(String clubRank) {
+        this.clubRank = clubRank;
     }
 
-    public int getCmRankReward() {
-        return cmRankReward;
+    public String getCmRank() {
+        return cmRank;
     }
 
-    public void setCmRankReward(int cmRankReward) {
-        this.cmRankReward = cmRankReward;
+    public void setCmRank(String cmRank) {
+        this.cmRank = cmRank;
     }
 
-    public int getLohRankReward() {
-        return lohRankReward;
+    public String getLohRank() {
+        return lohRank;
     }
 
-    public void setLohRankReward(int lohRankReward) {
-        this.lohRankReward = lohRankReward;
+    public void setLohRank(String lohRank) {
+        this.lohRank = lohRank;
+    }
+
+    public int getUmaTicketsOwned() {
+        return umaTicketsOwned;
+    }
+
+    public void setUmaTicketsOwned(int umaTicketsOwned) {
+        this.umaTicketsOwned = umaTicketsOwned;
+    }
+
+    public int getSupportTicketsOwned() {
+        return supportTicketsOwned;
+    }
+
+    public void setSupportTicketsOwned(int supportTicketsOwned) {
+        this.supportTicketsOwned = supportTicketsOwned;
+    }
+
+    public int getChampionEventsCount() {
+        return championEventsCount;
+    }
+
+    public void setChampionEventsCount(int championEventsCount) {
+        this.championEventsCount = championEventsCount;
+    }
+
+    public int getLohEventsCount() {
+        return lohEventsCount;
+    }
+
+    public void setLohEventsCount(int lohEventsCount) {
+        this.lohEventsCount = lohEventsCount;
     }
 
     public boolean isDailyPackActive() {

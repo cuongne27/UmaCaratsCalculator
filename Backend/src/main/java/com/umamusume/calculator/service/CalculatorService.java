@@ -42,39 +42,99 @@ public class CalculatorService {
         }
 
         long days = ChronoUnit.DAYS.between(start, end);
-        double weeks = days / 7.0;
-        double months = days / 30.41;
+        int weeks = (int) (days / 7);
+        int months = (int) (days / 30);
 
-        // Thu nhập nền cố định từ sự kiện hệ thống (Event/Log-in/Story) ~12000 mỗi
-        // tháng
-        double baseMonthlyIncome = 12000.0;
-        int dailyMissionIncome = 50;
+        // Henry tables (hardcoded)
+        java.util.Map<String, Integer> teamTrialsWeekly = new java.util.HashMap<>();
+        teamTrialsWeekly.put("Class 6", 375);
+        teamTrialsWeekly.put("Class 5.5", 262);
+        teamTrialsWeekly.put("Class 5", 225);
+        teamTrialsWeekly.put("Class 4", 150);
+        teamTrialsWeekly.put("Class 3", 75);
+        teamTrialsWeekly.put("Class 2", 35);
+        teamTrialsWeekly.put("Class 1", 0);
 
-        // Tính toán các nguồn thu nhập biến đổi
-        double earnedDaily = days * dailyMissionIncome;
-        double earnedEvents = months * baseMonthlyIncome;
-        double earnedTrials = weeks * request.getTeamTrialsClass();
-        double earnedClub = months * request.getClubRankReward();
+        java.util.Map<String, Integer> clubMonthly = new java.util.HashMap<>();
+        clubMonthly.put("SS", 4500);
+        clubMonthly.put("S+", 3600);
+        clubMonthly.put("S", 3150);
+        clubMonthly.put("A+", 2700);
+        clubMonthly.put("A", 2250);
+        clubMonthly.put("B+", 1800);
+        clubMonthly.put("B", 1350);
+        clubMonthly.put("C+", 900);
+        clubMonthly.put("C", 450);
+        clubMonthly.put("D+", 225);
 
-        // Giả định PvP định kỳ: Champions Meeting và LoH thay phiên diễn ra hàng tháng
-        double earnedCm = (months / 2.0) * request.getCmRankReward();
-        double earnedLoh = (months / 2.0) * request.getLohRankReward();
+        java.util.Map<String, int[]> champion = new java.util.HashMap<>();
+        champion.put("Champion", new int[]{3300, 5});
+        champion.put("Second", new int[]{2400, 4});
+        champion.put("Third", new int[]{1700, 3});
+        champion.put("Group B 1st", new int[]{1600, 3});
+        champion.put("Group B 2nd", new int[]{1250, 2});
+        champion.put("Open League", new int[]{1100, 1});
 
-        // Gói nạp hàng ngày nếu có kích hoạt
+        java.util.Map<String, int[]> loh = new java.util.HashMap<>();
+        loh.put("Platinum 4", new int[]{3290, 2});
+        loh.put("Platinum 3", new int[]{2790, 2});
+        loh.put("Platinum 2", new int[]{2290, 2});
+        loh.put("Platinum 1", new int[]{1790, 2});
+        loh.put("Gold 4", new int[]{1290, 2});
+        loh.put("Gold 3", new int[]{990, 1});
+        loh.put("Gold 2", new int[]{690, 1});
+        loh.put("Gold 1", new int[]{540, 0});
+        loh.put("Silver 4", new int[]{390, 0});
+        loh.put("Silver 3", new int[]{290, 0});
+        loh.put("Silver 2", new int[]{190, 0});
+        loh.put("Silver 1", new int[]{140, 0});
+        loh.put("Bronze 4", new int[]{90, 0});
+        loh.put("Bronze 3", new int[]{60, 0});
+        loh.put("Bronze 2", new int[]{30, 0});
+
+        // Daily / base incomes - keep a small baseline similar to previous implementation
+        int dailyMissionIncome = 50; // fallback daily
+
+        int earnedDaily = (int) (days * dailyMissionIncome);
+
+        // team trials weekly income based on selected class
+        int teamWeekly = teamTrialsWeekly.getOrDefault(request.getTeamTrialsClass(), 0);
+        int earnedTrials = weeks * teamWeekly;
+
+        // club monthly
+        int clubMonthlyIncome = clubMonthly.getOrDefault(request.getClubRank() == null ? "D+" : request.getClubRank(), 0);
+        int earnedClub = months * clubMonthlyIncome;
+
+        // champion events and loh events (user provides counts)
+        int[] cmVals = champion.getOrDefault(request.getCmRank() == null ? "Champion" : request.getCmRank(), new int[]{0,0});
+        int cmCaratPerEvent = cmVals[0];
+        int cmTicketsPerEvent = cmVals[1];
+        int cmEvents = request.getChampionEventsCount();
+        int earnedCm = cmEvents * cmCaratPerEvent;
+        int cmTickets = cmEvents * cmTicketsPerEvent;
+
+        int[] lohVals = loh.getOrDefault(request.getLohRank() == null ? "Silver 4" : request.getLohRank(), new int[]{0,0});
+        int lohCaratPerEvent = lohVals[0];
+        int lohTicketsPerEvent = lohVals[1];
+        int lohEvents = request.getLohEventsCount();
+        int earnedLoh = lohEvents * lohCaratPerEvent;
+        int lohTickets = lohEvents * lohTicketsPerEvent;
+
+        // daily pack
         int dailyPackBonus = request.isDailyPackActive() ? 1000 : 0;
-        double earnedPacks = months * dailyPackBonus;
+        int earnedPacks = months * dailyPackBonus;
 
-        // Tổng hợp tài nguyên tích lũy
-        // // Bad: ép kiểu không kiểm soát trực tiếp dễ gây sai số lớn
-        // // int total = (int) (earnedDaily + earnedEvents);
+        int totalEarned = earnedDaily + earnedTrials + earnedClub + earnedCm + earnedLoh + earnedPacks + /*baseline monthly events*/ 0;
 
-        // // Good: Làm tròn số học theo tiêu chuẩn toán học trước khi chuyển đổi kiểu
-        // dữ liệu
-        int totalEarned = (int) Math
-                .round(earnedDaily + earnedEvents + earnedTrials + earnedClub + earnedCm + earnedLoh + earnedPacks);
         int finalTotal = request.getCurrentCarats() + totalEarned;
-        int totalPulls = finalTotal / 150;
 
-        return new CalculationResult(days, totalEarned, finalTotal, totalPulls);
+        // Pull cost assumption: 300 carats per pull
+        int PULL_COST = 300;
+        int totalPulls = finalTotal / PULL_COST;
+
+        int totalUmaTickets = request.getUmaTicketsOwned() + cmTickets + lohTickets;
+        int totalSupportTickets = request.getSupportTicketsOwned();
+
+        return new CalculationResult(days, totalEarned, finalTotal, totalPulls, earnedTrials, earnedClub, earnedCm, earnedLoh, totalUmaTickets, totalSupportTickets);
     }
 }

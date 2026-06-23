@@ -23,6 +23,10 @@ export default function HomePage() {
   const [clubRankReward, setClubRankReward] = useState('0')
   const [cmRankReward, setCmRankReward] = useState('0')
   const [lohRankReward, setLohRankReward] = useState('0')
+  const [umaTicketsOwned, setUmaTicketsOwned] = useState('0')
+  const [supportTicketsOwned, setSupportTicketsOwned] = useState('0')
+  const [championEventsCount, setChampionEventsCount] = useState('0')
+  const [lohEventsCount, setLohEventsCount] = useState('0')
   const [dailyPackActive, setDailyPackActive] = useState(false)
   const [backendResult, setBackendResult] = useState<any | null>(null)
 
@@ -68,10 +72,14 @@ export default function HomePage() {
       startDate: releaseDate.split('T')[0],
       targetBannerId: selectedBanner,
       currentCarats: Number(currentCarats) || 0,
-      teamTrialsClass: Number(teamTrialsClass) || 0,
-      clubRankReward: Number(clubRankReward) || 0,
-      cmRankReward: Number(cmRankReward) || 0,
-      lohRankReward: Number(lohRankReward) || 0,
+      teamTrialsClass: teamTrialsClass,
+      clubRank: clubRankReward,
+      cmRank: cmRankReward,
+      lohRank: lohRankReward,
+      umaTicketsOwned: Number(umaTicketsOwned) || 0,
+      supportTicketsOwned: Number(supportTicketsOwned) || 0,
+      championEventsCount: Number(championEventsCount) || 0,
+      lohEventsCount: Number(lohEventsCount) || 0,
       dailyPackActive: Boolean(dailyPackActive),
     }
 
@@ -85,6 +93,101 @@ export default function HomePage() {
       setBackendResult(data)
     } catch (e) {
       console.error(e)
+    }
+  }
+
+  // Client-side calculation (based on Henry tables provided by user)
+  function clientCalculate() {
+    if (!releaseDate) return null
+    const days = daysUntilRelease
+    const current = Number(currentCarats) || 0
+    const daily = Number(dailyCarats) || 0
+    const bonus = Number(bonusCarats) || 0
+
+    const teamTrialsTable: Record<string, number> = {
+      'Class 6': 375,
+      'Class 5.5': 262,
+      'Class 5': 225,
+      'Class 4': 150,
+      'Class 3': 75,
+      'Class 2': 35,
+      'Class 1': 0,
+    }
+
+    const clubRankTable: Record<string, number> = {
+      'SS': 4500,
+      'S+': 3600,
+      'S': 3150,
+      'A+': 2700,
+      'A': 2250,
+      'B+': 1800,
+      'B': 1350,
+      'C+': 900,
+      'C': 450,
+      'D+': 225,
+    }
+
+    const championTable: Record<string, { carats: number; tickets: number }> = {
+      'Champion': { carats: 3300, tickets: 5 },
+      'Second': { carats: 2400, tickets: 4 },
+      'Third': { carats: 1700, tickets: 3 },
+      'Group B 1st': { carats: 1600, tickets: 3 },
+      'Group B 2nd': { carats: 1250, tickets: 2 },
+      'Open League': { carats: 1100, tickets: 1 },
+    }
+
+    const lohTable: Record<string, { carats: number; tickets: number }> = {
+      'Platinum 4': { carats: 3290, tickets: 2 },
+      'Platinum 3': { carats: 2790, tickets: 2 },
+      'Platinum 2': { carats: 2290, tickets: 2 },
+      'Platinum 1': { carats: 1790, tickets: 2 },
+      'Gold 4': { carats: 1290, tickets: 2 },
+      'Gold 3': { carats: 990, tickets: 1 },
+      'Gold 2': { carats: 690, tickets: 1 },
+      'Gold 1': { carats: 540, tickets: 0 },
+      'Silver 4': { carats: 390, tickets: 0 },
+      'Silver 3': { carats: 290, tickets: 0 },
+      'Silver 2': { carats: 190, tickets: 0 },
+      'Silver 1': { carats: 140, tickets: 0 },
+      'Bronze 4': { carats: 90, tickets: 0 },
+      'Bronze 3': { carats: 60, tickets: 0 },
+      'Bronze 2': { carats: 30, tickets: 0 },
+    }
+
+    const weeks = Math.floor(days / 7)
+    const months = Math.floor(days / 30)
+
+    const teamClass = Object.keys(teamTrialsTable).includes(teamTrialsClass) ? teamTrialsClass : 'Class 1'
+    const teamCarats = weeks * (teamTrialsTable[teamClass] || 0)
+
+    const clubRank = Object.keys(clubRankTable).includes(clubRankReward) ? clubRankReward : 'D+'
+    const clubCarats = months * (clubRankTable[clubRank] || 0)
+
+    const cm = championTable[cmRankReward] ? championTable[cmRankReward] : { carats: 0, tickets: 0 }
+    const loh = lohTable[lohRankReward] ? lohTable[lohRankReward] : { carats: 0, tickets: 0 }
+
+    const championCarats = cm.carats
+    const championTickets = cm.tickets
+
+    const lohCarats = loh.carats
+    const lohTickets = loh.tickets
+
+    const totalCarats = current + days * daily + bonus + teamCarats + clubCarats + championCarats + lohCarats
+
+    const umaTicketsStart = Number(umaTicketsOwned) || 0
+    const supportTicketsStart = Number(supportTicketsOwned) || 0
+    const totalUmaTickets = umaTicketsStart + championTickets + lohTickets
+    const totalSupportTickets = supportTicketsStart
+
+    return {
+      days,
+      teamCarats,
+      clubCarats,
+      championCarats,
+      lohCarats,
+      totalCarats,
+      totalUmaTickets,
+      totalSupportTickets,
     }
   }
 
@@ -151,23 +254,65 @@ export default function HomePage() {
           </div>
 
           <div className="field">
-            <label htmlFor="teamTrialsClass">Team trials (avg per week)</label>
-            <input id="teamTrialsClass" type="number" min="0" value={teamTrialsClass} onChange={(e: ChangeEvent<HTMLInputElement>) => setTeamTrialsClass(e.target.value)} />
+            <label htmlFor="teamTrialsClass">Team trials class</label>
+            <select id="teamTrialsClass" value={teamTrialsClass} onChange={(e: ChangeEvent<HTMLSelectElement>) => setTeamTrialsClass(e.target.value)}>
+              <option value="Class 6">Class 6</option>
+              <option value="Class 5.5">Class 5.5</option>
+              <option value="Class 5">Class 5</option>
+              <option value="Class 4">Class 4</option>
+              <option value="Class 3">Class 3</option>
+              <option value="Class 2">Class 2</option>
+              <option value="Class 1">Class 1</option>
+            </select>
           </div>
 
           <div className="field">
-            <label htmlFor="clubRankReward">Club reward (monthly)</label>
-            <input id="clubRankReward" type="number" min="0" value={clubRankReward} onChange={(e: ChangeEvent<HTMLInputElement>) => setClubRankReward(e.target.value)} />
+            <label htmlFor="clubRankReward">Club rank</label>
+            <select id="clubRankReward" value={clubRankReward} onChange={(e: ChangeEvent<HTMLSelectElement>) => setClubRankReward(e.target.value)}>
+              <option value="SS">SS</option>
+              <option value="S+">S+</option>
+              <option value="S">S</option>
+              <option value="A+">A+</option>
+              <option value="A">A</option>
+              <option value="B+">B+</option>
+              <option value="B">B</option>
+              <option value="C+">C+</option>
+              <option value="C">C</option>
+              <option value="D+">D+</option>
+            </select>
           </div>
 
           <div className="field">
-            <label htmlFor="cmRankReward">CM reward (per event)</label>
-            <input id="cmRankReward" type="number" min="0" value={cmRankReward} onChange={(e: ChangeEvent<HTMLInputElement>) => setCmRankReward(e.target.value)} />
+            <label htmlFor="cmRankReward">Champion's Meeting placement</label>
+            <select id="cmRankReward" value={cmRankReward} onChange={(e: ChangeEvent<HTMLSelectElement>) => setCmRankReward(e.target.value)}>
+              <option value="Champion">Champion</option>
+              <option value="Second">Second</option>
+              <option value="Third">Third</option>
+              <option value="Group B 1st">Group B 1st</option>
+              <option value="Group B 2nd">Group B 2nd</option>
+              <option value="Open League">Open League</option>
+            </select>
           </div>
 
           <div className="field">
-            <label htmlFor="lohRankReward">LoH reward (per event)</label>
-            <input id="lohRankReward" type="number" min="0" value={lohRankReward} onChange={(e: ChangeEvent<HTMLInputElement>) => setLohRankReward(e.target.value)} />
+            <label htmlFor="lohRankReward">LoH rank</label>
+            <select id="lohRankReward" value={lohRankReward} onChange={(e: ChangeEvent<HTMLSelectElement>) => setLohRankReward(e.target.value)}>
+              <option value="Platinum 4">Platinum 4</option>
+              <option value="Platinum 3">Platinum 3</option>
+              <option value="Platinum 2">Platinum 2</option>
+              <option value="Platinum 1">Platinum 1</option>
+              <option value="Gold 4">Gold 4</option>
+              <option value="Gold 3">Gold 3</option>
+              <option value="Gold 2">Gold 2</option>
+              <option value="Gold 1">Gold 1</option>
+              <option value="Silver 4">Silver 4</option>
+              <option value="Silver 3">Silver 3</option>
+              <option value="Silver 2">Silver 2</option>
+              <option value="Silver 1">Silver 1</option>
+              <option value="Bronze 4">Bronze 4</option>
+              <option value="Bronze 3">Bronze 3</option>
+              <option value="Bronze 2">Bronze 2</option>
+            </select>
           </div>
 
           <div className="field">
@@ -176,10 +321,31 @@ export default function HomePage() {
               Gói nạp hàng ngày
             </label>
           </div>
+
+          <div className="field">
+            <label htmlFor="championEventsCount">Champion events count</label>
+            <input id="championEventsCount" type="number" min="0" value={championEventsCount} onChange={(e: ChangeEvent<HTMLInputElement>) => setChampionEventsCount(e.target.value)} />
+          </div>
+
+          <div className="field">
+            <label htmlFor="lohEventsCount">LoH events count</label>
+            <input id="lohEventsCount" type="number" min="0" value={lohEventsCount} onChange={(e: ChangeEvent<HTMLInputElement>) => setLohEventsCount(e.target.value)} />
+          </div>
+
+          <div className="field">
+            <label htmlFor="umaTicketsOwned">Uma tickets owned</label>
+            <input id="umaTicketsOwned" type="number" min="0" value={umaTicketsOwned} onChange={(e: ChangeEvent<HTMLInputElement>) => setUmaTicketsOwned(e.target.value)} />
+          </div>
+
+          <div className="field">
+            <label htmlFor="supportTicketsOwned">Support tickets owned</label>
+            <input id="supportTicketsOwned" type="number" min="0" value={supportTicketsOwned} onChange={(e: ChangeEvent<HTMLInputElement>) => setSupportTicketsOwned(e.target.value)} />
+          </div>
         </div>
 
         <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
           <button onClick={callBackendCalculate}>Tính bằng Backend</button>
+          <button onClick={() => setBackendResult(null) || setBackendResult(clientCalculate())}>Tính nhanh (Client)</button>
         </div>
 
         <div className="result">
@@ -196,15 +362,25 @@ export default function HomePage() {
                 <p className="notice">Ngày banner đã qua. Vui lòng chọn ngày trong tương lai.</p>
               ) : (
                 <>
-                  <p>
-                    Khoảng thời gian: <strong>{formatNumber(daysUntilRelease)}</strong> ngày từ hiện tại đến banner ra mắt.
-                  </p>
-                  <p>
-                    Tổng carat ước tính: <strong>{formatNumber(totalCarats)}</strong> carat
-                  </p>
-                  <p className="notice">
-                    Lưu ý: Giá trị này chỉ là ước tính dựa trên carat hàng ngày và phần thưởng dự kiến.
-                  </p>
+                  {backendResult === null ? (
+                    (() => {
+                      const c = clientCalculate()
+                      if (!c) return <p>Không có dữ liệu để tính.</p>
+                      return (
+                        <>
+                          <p>Khoảng thời gian: <strong>{formatNumber(c.days)}</strong> ngày từ hiện tại đến banner ra mắt.</p>
+                          <p>Tổng carat ước tính: <strong>{formatNumber(c.totalCarats)}</strong> carat</p>
+                          <p>Team trials đóng góp: <strong>{formatNumber(c.teamCarats)}</strong> carat</p>
+                          <p>Club đóng góp: <strong>{formatNumber(c.clubCarats)}</strong> carat</p>
+                          <p>Champion & LoH: <strong>{formatNumber(c.championCarats + c.lohCarats)}</strong> carat</p>
+                          <p>Uma tickets (sở hữu + event): <strong>{formatNumber(c.totalUmaTickets)}</strong></p>
+                          <p>Support tickets sở hữu: <strong>{formatNumber(c.totalSupportTickets)}</strong></p>
+                        </>
+                      )
+                    })()
+                  ) : (
+                    <p className="notice">Lưu ý: Giá trị này chỉ là ước tính dựa trên carat hàng ngày và phần thưởng dự kiến.</p>
+                  )}
                 </>
               )
             ) : (
