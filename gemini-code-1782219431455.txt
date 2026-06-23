@@ -1,0 +1,19 @@
+uma-carat-calculator/
+├── CONVERSATION_CONTEXT.md
+├── backend-springboot/
+│   ├── src/
+│   │   └── main/
+│   │       └── java/com/umamusume/calculator/
+│   │           ├── controller/CaratController.java
+│   │           ├── dto/
+│   │           │   ├── CalculationRequest.java
+│   │           │   └── CalculationResult.java
+│   │           ├── model/Banner.java
+│   │           └── service/CalculatorService.java
+│   └── pom.xml
+└── frontend-nextjs/
+    ├── src/
+    │   └── app/
+    │       └── page.tsx
+    ├── package.json
+    └── tsconfig.json
